@@ -15,9 +15,12 @@ jobs:
         run: npm run lint
       - name: Test code
         run: npm run test
+  # BUILD
   build:
     needs: test
     runs-on: ubuntu-latest
+    outputs:
+      script-file: ${{ steps.publish.outputs.script-file }}
     steps:
       - name: Get code
         uses: actions/checkout@v3
@@ -25,20 +28,28 @@ jobs:
         run: npm ci
       - name: Build website
         run: npm run build
+      - name: Publish JS Filename
+        id: publish
+        run: find dist/assets/*.js -type f -execdir echo 'script-file={}' >> $GITHUB_OUTPUT ';'
+      # Upload artifacts
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
           name: dist-files
           path: dist
+  # DEPLOY
   deploy:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      # Download artifacts
       - name: Get build artifacts
         uses: actions/download-artifact@v3
         with:
           name: dist-files
       - name: Output contents
         run: ls
+      - name: Output file name from previous Job
+        run: echo "${{ needs.build.outputs.script-file }}"
       - name: Deploy
         run: echo "Deploying..."
